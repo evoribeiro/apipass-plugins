@@ -211,6 +211,8 @@ Todo step (HTTP, NodeJS ou acao do catalogo) retorna seu resultado em `.body`. *
 
 Isso vale dentro de codigo NodeJS (`$.a0.body.campo`) e dentro de interpolacoes (`"{{$.a0.body.campo}}"`).
 
+> **Excecao — MEMORY_STORE_GET:** este e o UNICO step que NAO usa `.body`. O resultado e injetado diretamente como `$.aN.value`. Use `$.aN.value` (NodeJS) ou `{{$.aN.value}}` (interpolacao). Usar `$.aN.body.value` sempre retorna `undefined`. Ver `/apipass-integrations:apipass-patterns` (secao "MEMORY_STORE — padrao de acumulacao em loop").
+
 ### AMS e AOS — filas assincronas e Object Store
 Para consumir/publicar mensagens via fila (AMS) ou persistir dados no MongoDB nativo da APIPASS (AOS), ver `/apipass-integrations:apipass-patterns` (secoes "AMS — Apipass Message System" e "AOS — Apipass Object Store") — shapes completos do trigger `TriggerAMSConsumeMessage`, do step `AMS_SEND_MESSAGE`, de `AOS_FIND_ONE_BY_QUERY`/`AOS_UPDATE`/`AOS_INSERT`/`AOS_DELETE` e do NodeJS helper de `$set`.
 ### Step NodeJS
