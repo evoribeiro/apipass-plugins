@@ -332,3 +332,150 @@ const queryMongoDB = {
 
 $export(null, { queryMongoDB });
 ```
+
+---
+
+## Regra critica — `nextSteps` para steps de acao (`.service.actions.Action`)
+
+Quando um `nextSteps` aponta para um step cujo `type` e `.service.actions.Action` (MEMORY_STORE, PROJECT_STORE, LOGGER, AMS_SEND_MESSAGE, AOS_*, etc.), o objeto de link **deve** incluir `coreRouteType` com o mesmo valor do step de destino. Sem esse campo o engine nao consegue resolver a URL do microsservico e a execucao falha com "Method and URL are required, check your flow configuration." — mesmo que o step de destino esteja configurado corretamente.
+
+**Shape correto:**
+```json
+"nextSteps": [
+  {
+    "id": "a0",
+    "type": ".service.actions.Action",
+    "sourceUUID": "integration-step-uuid-sourceEndpoint-trigger",
+    "targetUUID": "integration-step-uuid-targetEndpoint-a0",
+    "coreRouteType": "MEMORY_STORE_SET"
+  }
+]
+```
+
+> `save_flow_development` e `publish_flow` aceitam o specflow sem esse campo sem reclamar — o erro so aparece em execucao. Para confirmar o shape correto, leia um fluxo funcional existente com `get_flow_development`.
+
+---
+
+## MEMORY_STORE — padrao de acumulacao em loop
+
+Padrao para acumular uma lista de itens durante um loop e usa-la apos o loop. Exemplo classico: enriquecer produtos de um pedido e montar um payload consolidado.
+
+### Regra critica: campo de output do MEMORY_STORE_GET
+
+MEMORY_STORE_GET e um step de catalogo (`.service.actions.Action`) e **nao retorna em `.body`**. O valor e injetado diretamente em `$.aN.value`. Use `$.aN.value` (nunca `$.aN.body.value`).
+
+Steps de catalogo em geral NAO retornam em `.body` — cada acao tem seu proprio campo de saida. Apenas steps HTTP, NodeJS e custom actions com `executeHttpRequest` retornam em `.body`.
+
+| Step | Output correto | Output ERRADO |
+|------|---------------|--------------|
+| MEMORY_STORE_GET (`a1`) | `$.a1.value` | ~~`$.a1.body.value`~~ |
+| HTTP / NodeJS | `$.aN.body.campo` | ~~`$.aN.campo`~~ |
+
+### Fluxo completo
+
+```
+(antes do loop)
+a0 — MEMORY_STORE_SET: inicializa key="lista", value="[]"
+
+(dentro do loop — por item)
+l0a0 — HTTP GET: busca detalhes do item atual
+l0a1 — NodeJS: monta objeto enriquecido
+l0a2 — MEMORY_STORE_GET: busca key="lista"  →  saida em $.l0a2.value  (NAO .body.value)
+l0a3 — NodeJS: append do objeto na lista e serializa de volta
+l0a4 — MEMORY_STORE_SET: salva key="lista", value={{$.l0a3.body.lista_serializada}}
+
+(apos o loop)
+a1 — MEMORY_STORE_GET: busca key="lista"   →  saida em $.a1.value    (NAO .body.value)
+a2 — NodeJS: monta payload final usando JSON.parse($.a1.value)
+```
+
+### Shape dos steps de MEMORY_STORE
+
+**MEMORY_STORE_SET (inicializacao antes do loop):**
+```json
+{
+  "id": "a0",
+  "type": ".service.actions.Action",
+  "actionId": "MEMORY_STORE_SET",
+  "coreRouteType": "MEMORY_STORE_SET",
+  "image": "https://s3.amazonaws.com/flow-manager-api-prd/actions/logo/MEMORY_STORE_SET.png",
+  "additionalConfiguration": true,
+  "authProvider": "",
+  "failOnError": false,
+  "inputData": { "key": "lista", "value": "[]" },
+  "nextSteps": [{ "id": "l0", "type": ".utility.loop.LoopCanvas", "sourceUUID": "...", "targetUUID": "..." }]
+}
+```
+
+**MEMORY_STORE_GET (dentro do loop):**
+```json
+{
+  "id": "l0a2",
+  "type": ".service.actions.Action",
+  "actionId": "MEMORY_STORE_GET",
+  "coreRouteType": "MEMORY_STORE_GET",
+  "image": "https://s3.amazonaws.com/flow-manager-api-prd/actions/logo/MEMORY_STORE_GET.png",
+  "additionalConfiguration": true,
+  "authProvider": "",
+  "failOnError": false,
+  "inputData": { "key": "lista" },
+  "nextSteps": [{ "id": "l0a3", "type": ".utility.nodejs.NodeJSUtility", "sourceUUID": "...", "targetUUID": "..." }]
+}
+```
+
+**NodeJS de append (l0a3):**
+```javascript
+// $.l0a2.value (NAO $.l0a2.body.value) — MEMORY_STORE_GET nao tem wrapper .body
+const existing = ($.l0a2 && $.l0a2.value) ? JSON.parse($.l0a2.value) : [];
+const item = $.l0a1.body.item;
+existing.push(item);
+$export(null, { lista_serializada: JSON.stringify(existing) });
+```
+`usedSteps: ["l0a2", "l0a1"]`
+
+**MEMORY_STORE_SET (salva lista atualizada dentro do loop — l0a4):**
+```json
+"inputData": { "key": "lista", "value": "{{$.l0a3.body.lista_serializada}}" }
+```
+
+**NodeJS de uso apos o loop (a2):**
+```javascript
+// $.a1.value (NAO $.a1.body.value) — mesma regra
+const items = ($.a1 && $.a1.value) ? JSON.parse($.a1.value) : [];
+$export(null, { payload: { products: items } });
+```
+`usedSteps: ["a1"]`
+
+> **Escopo:** o MEMORY_STORE e por execucao — cada disparo do fluxo tem seu proprio estado. Nao ha interferencia entre execucoes paralelas.
+
+---
+
+## Logger — shape do step e do link
+
+O Logger e o **unico step cujo `type` do link (em `nextSteps`) difere do `type` do step de destino**.
+
+**Step Logger:**
+```json
+{
+  "id": "a5",
+  "type": ".service.actions.Action",
+  "actionId": "LOGGER",
+  "coreRouteType": "LOGGER_UTILITY",
+  "authorization": "",
+  "authProvider": "",
+  "additionalConfiguration": true,
+  "failOnError": false,
+  "inputData": {
+    "logMessage": "mensagem aqui",
+    "logLevel": "WARN"
+  },
+  "nextSteps": [{ "id": "a999", "type": ".StopV2Step", "sourceUUID": "...", "targetUUID": "..." }]
+}
+```
+
+**Link que aponta PARA o Logger** (no `nextSteps` do step anterior, ex. Switch):
+```json
+{ "id": "a5", "type": ".utility.logger.LoggerUtility", "sourceUUID": "...", "targetUUID": "..." }
+```
+
+> Usar `type: ".service.actions.Action"` no link (mesmo com `coreRouteType: "LOGGER_UTILITY"`) causa "Method and URL are required" em execucao. O tipo correto do link e `.utility.logger.LoggerUtility`.

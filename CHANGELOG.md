@@ -1,5 +1,20 @@
 # Changelog — apipass-integrations
 
+## 0.16.0
+### Adicionado
+- **`apipass-patterns`: secao "MEMORY_STORE — padrao de acumulacao em loop".** Documenta o padrao completo para acumular itens durante um loop usando MEMORY_STORE_SET/GET: inicializacao antes do loop com `[]`, leitura/append/salvamento a cada iteracao, e uso do resultado apos o loop. Inclui shapes dos steps, codigo NodeJS de append (`JSON.parse` / `JSON.stringify`) e a regra critica: **MEMORY_STORE_GET e a unica excecao ao `.body`** — o valor e injetado diretamente em `$.aN.value` (sem wrapper). Usar `$.aN.body.value` sempre retorna `undefined`.
+- **`apipass-patterns`: secao "Logger — shape do step e do link".** Documenta o shape completo do step Logger (`actionId: "LOGGER"`, `coreRouteType: "LOGGER_UTILITY"`, `authorization: ""`) e a regra especial do link: o objeto em `nextSteps` que aponta PARA o Logger deve usar `type: ".utility.logger.LoggerUtility"` — tipo diferente do step de destino. Logger e o unico caso com essa divergencia.
+- **`apipass-patterns`: regra critica de `coreRouteType` nos links `nextSteps`** (secao propria). Todo link em `nextSteps` que aponta para um `.service.actions.Action` deve incluir `coreRouteType` com o mesmo valor do step de destino; sem ele o engine nao resolve a URL do microsservico e a execucao falha em runtime (save/publish aceitam sem reclamar).
+- **`apipass-gotchas`: tres novos gotchas na tabela "Construcao de fluxo":**
+  - `"Method and URL are required"` causado por `coreRouteType` ausente no link `nextSteps`.
+  - MEMORY_STORE_GET retorna `$.aN.value` (sem `.body`) — excecao a regra universal, causa bugs silenciosos de acumulacao em loop.
+  - Logger: link deve usar `type: ".utility.logger.LoggerUtility"` (diferente do `type` do step de destino); usar `.service.actions.Action` no link causa o mesmo erro de "Method and URL".
+- **`build-flow`: nota de excecao ao MEMORY_STORE_GET** na secao "Acesso a saida de steps — regra universal", com referencia a `apipass-patterns` para o padrao completo.
+
+## 0.15.0
+### Adicionado
+- **Guidelines ABNT NBR 14724 na skill `document-flows`.** Nova secao 6.1 com valores numericos prontos para uso no docx-js: margens A4 (superior 3 cm, inferior/direita 2 cm, esquerda 3 cm — largura util 9071 DXA), fonte Arial 12pt com espacamento 1,5, hierarquia de titulos (nivel 1 MAIUSCULO+negrito, nivel 2 negrito, nivel 3 negrito italico), legendas de tabela (acima) e figura (abaixo), numeracao de paginas no canto superior direito (header), listas com traco (--) sem bullet grafico, sumario com pontos via TabStopType.RIGHT. Inclui aviso critico sobre encoding CP1252/UTF-8 no Windows/PowerShell e instrucao para converter SVG para PNG com o pacote `sharp`. Gatilhos da skill atualizados com "documento ABNT" e "documento tecnico-funcional".
+
 ## 0.14.0
 ### Adicionado
 - **Padroes de AMS (filas assincronas) e AOS (Object Store) na skill `apipass-patterns`.** Nova secao AMS: trigger `TriggerAMSConsumeMessage`, step `AMS_SEND_MESSAGE`, convencao de nome de fila com `{{$.stage.name}}-`, `deleteStrategy`, acesso ao payload no subfluxo consumidor. Nova secao AOS: autorizacao `APIPASS_OBJECT_STORE`, convencao database/colecao, shapes completos de `AOS_FIND_ONE_BY_QUERY`/`AOS_UPDATE`/`AOS_INSERT`/`AOS_DELETE`, padrao CRUD GET/POST/PATCH, NodeJS para query `$set`. Skill `build-flow` ganhou uma referencia curta a essas secoes (sem duplicar o conteudo).
