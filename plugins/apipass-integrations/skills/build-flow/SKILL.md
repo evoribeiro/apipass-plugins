@@ -201,17 +201,28 @@ Ver shape completo e exemplos em `/apipass-integrations:apipass-patterns` (secao
 - a999: positionX do ultimo step regular + 210
 - **Loop (`LoopCanvas`)**: os steps dentro de `loopSteps` usam um espaco de coordenadas PROPRIO do canvas do loop (recomece em ~`8000`, ex. `l1StartLoop: 8043,8718`, incrementando 210), independente das posicoes do canvas principal.
 
-### Acesso a saida de steps — regra universal
-Todo step (HTTP, NodeJS ou acao do catalogo) retorna seu resultado em `.body`. **Sempre use `.body` ao referenciar a saida de qualquer step.**
+### Acesso a saida de steps — qual campo usar
 
-- `$.a0.body.campo` — acessa `campo` exportado pelo step a0
-- `$.a1.body.results` — acessa `results` da resposta do step a1
-- Exemplo correto: `var results = $.a1.body.results;`
-- Exemplo ERRADO: `var results = $.a1.results;` ← nunca omita `.body`
+Nem todo step retorna em `.body`. A regra depende do tipo do step:
 
-Isso vale dentro de codigo NodeJS (`$.a0.body.campo`) e dentro de interpolacoes (`"{{$.a0.body.campo}}"`).
+| Tipo de step | Campo de output | Exemplo |
+|---|---|---|
+| HTTP (`HttpRequest`) | `.body` | `$.a0.body.campo` |
+| NodeJS (`NodeJSUtility`) | `.body` | `$.a0.body.campo` |
+| Custom action com `executeHttpRequest` | `.body` | `$.a0.body.campo` |
+| Steps de catalogo (`.service.actions.Action`) | **campo proprio da acao** | varia — veja abaixo |
 
-> **Excecao — MEMORY_STORE_GET:** este e o UNICO step que NAO usa `.body`. O resultado e injetado diretamente como `$.aN.value`. Use `$.aN.value` (NodeJS) ou `{{$.aN.value}}` (interpolacao). Usar `$.aN.body.value` sempre retorna `undefined`. Ver `/apipass-integrations:apipass-patterns` (secao "MEMORY_STORE — padrao de acumulacao em loop").
+**Steps de catalogo NAO retornam em `.body`** — cada acao expoe seu proprio campo de saida:
+
+| Acao | Campo de output |
+|---|---|
+| MEMORY_STORE_GET | `$.aN.value` |
+| ERROR_ROUTE | `$.aN.message` |
+| AOS_FIND_ONE_BY_QUERY | `$.aN.body.document` *(excecao documentada — essa acao retorna `.body`)* |
+
+Quando nao souber o campo de output de uma acao, leia um fluxo real que a usa com `get_flow_development` e inspecione o payload com `read_step_payload`. Nunca assuma `.body` para acoes de catalogo.
+
+Ver `/apipass-integrations:apipass-patterns` para o campo de saida do MEMORY_STORE_GET e outros exemplos.
 
 ### AMS e AOS — filas assincronas e Object Store
 Para consumir/publicar mensagens via fila (AMS) ou persistir dados no MongoDB nativo da APIPASS (AOS), ver `/apipass-integrations:apipass-patterns` (secoes "AMS — Apipass Message System" e "AOS — Apipass Object Store") — shapes completos do trigger `TriggerAMSConsumeMessage`, do step `AMS_SEND_MESSAGE`, de `AOS_FIND_ONE_BY_QUERY`/`AOS_UPDATE`/`AOS_INSERT`/`AOS_DELETE` e do NodeJS helper de `$set`.

@@ -360,14 +360,16 @@ Quando um `nextSteps` aponta para um step cujo `type` e `.service.actions.Action
 
 Padrao para acumular uma lista de itens durante um loop e usa-la apos o loop. Exemplo classico: enriquecer produtos de um pedido e montar um payload consolidado.
 
-### Regra critica: excecao ao `.body`
+### Regra critica: campo de output do MEMORY_STORE_GET
 
-**MEMORY_STORE_GET e a UNICA excecao a regra universal do `.body`.** Ele injeta o resultado diretamente como `$.aN.value` — sem wrapper `.body`. Use `$.aN.value` (nunca `$.aN.body.value`).
+MEMORY_STORE_GET e um step de catalogo (`.service.actions.Action`) e **nao retorna em `.body`**. O valor e injetado diretamente em `$.aN.value`. Use `$.aN.value` (nunca `$.aN.body.value`).
+
+Steps de catalogo em geral NAO retornam em `.body` — cada acao tem seu proprio campo de saida. Apenas steps HTTP, NodeJS e custom actions com `executeHttpRequest` retornam em `.body`.
 
 | Step | Output correto | Output ERRADO |
 |------|---------------|--------------|
 | MEMORY_STORE_GET (`a1`) | `$.a1.value` | ~~`$.a1.body.value`~~ |
-| Qualquer outro step | `$.aN.body.campo` | ~~`$.aN.campo`~~ |
+| HTTP / NodeJS | `$.aN.body.campo` | ~~`$.aN.campo`~~ |
 
 ### Fluxo completo
 
