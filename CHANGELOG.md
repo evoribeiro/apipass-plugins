@@ -1,5 +1,10 @@
 # Changelog — apipass-integrations
 
+## 0.16.1
+### Adicionado
+- **`apipass-gotchas`: secao "Fuso horario dos timestamps"** no fluxo de debug de execucao. Documenta que `startTime`/`finishTime` das tools de log vem em UTC, enquanto a UI da plataforma exibe no fuso local da conta — orienta converter antes de reportar horarios ao usuario.
+- **`apipass-gotchas`: secao "Evidencia junto da conclusao"** no fluxo de debug de execucao. Reforca o padrao de comparacao erro vs. sucesso: ao concluir causa raiz, anexar o `read_step_payload` comparativo (request identico, resultado diferente) junto do veredito, em vez de so afirmar a conclusao em prosa.
+
 ## 0.16.0
 ### Adicionado
 - **`apipass-patterns`: secao "MEMORY_STORE — padrao de acumulacao em loop".** Documenta o padrao completo para acumular itens durante um loop usando MEMORY_STORE_SET/GET: inicializacao antes do loop com `[]`, leitura/append/salvamento a cada iteracao, e uso do resultado apos o loop. Inclui shapes dos steps, codigo NodeJS de append (`JSON.parse` / `JSON.stringify`) e a regra critica: **MEMORY_STORE_GET e a unica excecao ao `.body`** — o valor e injetado diretamente em `$.aN.value` (sem wrapper). Usar `$.aN.body.value` sempre retorna `undefined`.
