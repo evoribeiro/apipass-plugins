@@ -1,5 +1,10 @@
 # Changelog — apipass-integrations
 
+## 0.14.1
+### Adicionado
+- **`apipass-gotchas`: secao "Fuso horario dos timestamps"** no fluxo de debug de execucao. Documenta que `startTime`/`finishTime` das tools de log vem em UTC, enquanto a UI da plataforma exibe no fuso local da conta — orienta converter antes de reportar horarios ao usuario.
+- **`apipass-gotchas`: secao "Evidencia junto da conclusao"** no fluxo de debug de execucao. Reforca o padrao de comparacao erro vs. sucesso: ao concluir causa raiz, anexar o `read_step_payload` comparativo (request identico, resultado diferente) junto do veredito, em vez de so afirmar a conclusao em prosa.
+
 ## 0.14.0
 ### Adicionado
 - **Padroes de AMS (filas assincronas) e AOS (Object Store) na skill `apipass-patterns`.** Nova secao AMS: trigger `TriggerAMSConsumeMessage`, step `AMS_SEND_MESSAGE`, convencao de nome de fila com `{{$.stage.name}}-`, `deleteStrategy`, acesso ao payload no subfluxo consumidor. Nova secao AOS: autorizacao `APIPASS_OBJECT_STORE`, convencao database/colecao, shapes completos de `AOS_FIND_ONE_BY_QUERY`/`AOS_UPDATE`/`AOS_INSERT`/`AOS_DELETE`, padrao CRUD GET/POST/PATCH, NodeJS para query `$set`. Skill `build-flow` ganhou uma referencia curta a essas secoes (sem duplicar o conteudo).
