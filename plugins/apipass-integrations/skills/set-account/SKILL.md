@@ -18,6 +18,20 @@ A APIPASS e multi-realm: **um realm do Keycloak por cliente, resolvido pelo `acc
 2. Abra a URL no navegador, autorize no Keycloak da sua conta.
 3. O token fica vinculado a sua sessao e renova sozinho. `apipass_auth_status` mostra o estado; `apipass_logout` descarta.
 
+## Descobrindo o `account_name` a partir de um link
+
+Quando o usuario colar um link do ambiente da APIPASS, o `account_name` e sempre o subdominio entre `https://` e `.app.apipass.com.br` — use-o direto no `apipass_login`, sem perguntar ao usuario:
+
+```
+https://royalcanin.app.apipass.com.br/dashboard                                    -> account_name: royalcanin
+https://royalcanin.app.apipass.com.br/executions?startDate=...&endDate=...          -> account_name: royalcanin
+https://royalcanin.app.apipass.com.br/flow/setup/e9ea1a46-5b3a-49ed-b3e8-14ede551f11f -> account_name: royalcanin
+https://carrefour.app.apipass.com.br/dashboard                                      -> account_name: carrefour
+https://mondelez.app.apipass.com.br/dashboard                                       -> account_name: mondelez
+```
+
+Isso vale so para links de **dashboard/app** (`*.app.apipass.com.br/...`). E diferente do link de SSO/Keycloak (`https://sso.apipass.com.br/keycloak/realms/{realm}/...`), onde o realm ja vem explicito na propria URL.
+
 ## Observacoes
 - O `account_name` so e necessario para escolher o realm no login; depois disso, o API Gateway deriva a identidade do proprio token.
 - Em desenvolvimento local (servidor na sua maquina), da para definir um realm default via `APIPASS_KEYCLOAK_REALM` no `.env` do servidor — assim `apipass_login` funciona sem argumento. Em producao hospedada, sempre informe o `account_name`.

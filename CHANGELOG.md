@@ -1,5 +1,9 @@
 # Changelog — apipass-integrations
 
+## 0.17.0
+### Adicionado
+- **Regra para resolver `account_name` a partir de um link de dashboard, na skill `set-account`.** Documentado que em qualquer link `https://{account_name}.app.apipass.com.br/...` (dashboard, executions, flow/setup, etc.) o `account_name` e o subdominio antes de `.app.apipass.com.br` -- deve ser extraido direto e usado no `apipass_login`, sem perguntar ao usuario. Distinto do link de SSO/Keycloak (`https://sso.apipass.com.br/keycloak/realms/{realm}/...`), onde o realm ja vem explicito na URL.
+
 ## 0.16.5
 ### Corrigido
 - **Headers de `.service.http.HttpRequest` usam `label`/`value`, nao `key`/`value` -- e sao descartados silenciosamente se o nome do campo estiver errado.** Confirmado com fluxo real do catalogo (`Consulta Cliente - Sistema A`): um header montado como `{"key": "...", "value": "..."}` e aceito sem erro pelo `save_flow_development` e pela execucao, mas nunca e enviado. Alem disso, os campos de nivel raiz `bearerToken` e `contentType` do stepSkeleton NAO sao aplicados de fato a requisicao (teste de eco via httpbin.org): o header Authorization nunca chega e o Content-Type real e sempre text/plain. A unica forma funcional e configurar Authorization/Content-Type manualmente no array `headers` com `label`/`value`. Documentado em `build-flow` (secao "Step HTTP", com exemplo completo de header OAuth), `apipass-actions` (nota no exemplo de HttpRequest) e duas novas linhas na tabela de armadilhas de `apipass-gotchas`. Confirmado empiricamente construindo o fluxo "Sincronizacao de Leads: PostgreSQL para Pipedrive" (conta demonstracao, flowId 7c88215c-b2e9-4351-abdf-eded94f46be4).
