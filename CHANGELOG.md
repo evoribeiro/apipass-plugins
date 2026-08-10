@@ -1,5 +1,9 @@
 # Changelog — apipass-integrations
 
+## 0.17.1
+### Corrigido
+- **`jsonSchema` solto em `responses[]` do StopV2Step e aceito mas ignorado pelo gerador de OAS.** Confirmado construindo os fluxos master da integracao LH<>CELK (conta TOPMED): um `jsonSchema` colocado como irmao de `responseData`/`groups`/`description` (fora do objeto `oas`) passa por `save_flow_development`/`create_version`/`publish_flow` sem nenhum erro, mas `generate_oas_documentation` ignora o campo -- o response gerado fica sem `content`/`schema`. O shape correto, confirmado lendo um fluxo real de outra conta com OAS de response funcionando, e aninhar dentro de `oas`: `{ "oas": { "mediaType": "application/json", "headers": [], "jsonSchema": "<string>" } }` -- ja documentado em `apipass-patterns`, mas sem o alerta sobre a variante incorreta. Nova linha na tabela de armadilhas de `apipass-gotchas` e aviso adicionado em `apipass-patterns`.
+
 ## 0.17.0
 ### Adicionado
 - **Login/auth: agente faz poll de `apipass_auth_status` automaticamente em vez de esperar o usuario confirmar.** Antes, apos `apipass_login` retornar a `authorizeUrl`, o agente ficava bloqueado esperando o usuario avisar ("go", "tenta de novo") apos autorizar no navegador — nao havia sinal automatico de conclusao. Documentado nas skills `apipass-gotchas` (linha `login_necessario` na tabela de armadilhas) e `set-account` (passo 3 do fluxo de login): o agente deve consultar `apipass_auth_status` sozinho, a cada poucos segundos, ate `authenticated: true` (ou timeout de alguns minutos), e so entao prosseguir com a acao original — sem exigir confirmacao manual do usuario. Validado empiricamente: `expiresInSeconds` sobe para o valor cheio apos a autorizacao no navegador, confirmando a emissao de um token novo.
