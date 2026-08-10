@@ -23,11 +23,11 @@ A APIPASS e multi-realm: **um realm do Keycloak por cliente, resolvido pelo `acc
 Quando o usuario colar um link do ambiente da APIPASS, o `account_name` e sempre o subdominio entre `https://` e `.app.apipass.com.br` — use-o direto no `apipass_login`, sem perguntar ao usuario:
 
 ```
-https://royalcanin.app.apipass.com.br/dashboard                                    -> account_name: royalcanin
-https://royalcanin.app.apipass.com.br/executions?startDate=...&endDate=...          -> account_name: royalcanin
-https://royalcanin.app.apipass.com.br/flow/setup/e9ea1a46-5b3a-49ed-b3e8-14ede551f11f -> account_name: royalcanin
-https://carrefour.app.apipass.com.br/dashboard                                      -> account_name: carrefour
-https://mondelez.app.apipass.com.br/dashboard                                       -> account_name: mondelez
+https://acme.app.apipass.com.br/dashboard                                    -> account_name: acme
+https://acme.app.apipass.com.br/executions?startDate=...&endDate=...          -> account_name: acme
+https://acme.app.apipass.com.br/flow/setup/e9ea1a46-5b3a-49ed-b3e8-14ede551f11f -> account_name: acme
+https://globex.app.apipass.com.br/dashboard                                      -> account_name: globex
+https://initech.app.apipass.com.br/dashboard                                       -> account_name: initech
 ```
 
 Isso vale so para links de **dashboard/app** (`*.app.apipass.com.br/...`). E diferente do link de SSO/Keycloak (`https://sso.apipass.com.br/keycloak/realms/{realm}/...`), onde o realm ja vem explicito na propria URL.
