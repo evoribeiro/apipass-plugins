@@ -1,5 +1,9 @@
 # Changelog — apipass-integrations
 
+## 0.18.0
+### Adicionado
+- **Regra para resolver `account_name` a partir de um link de dashboard, na skill `set-account`.** Documentado que em qualquer link `https://{account_name}.app.apipass.com.br/...` (dashboard, executions, flow/setup, etc.) o `account_name` e o subdominio antes de `.app.apipass.com.br` -- deve ser extraido direto e usado no `apipass_login`, sem perguntar ao usuario. Distinto do link de SSO/Keycloak (`https://sso.apipass.com.br/keycloak/realms/{realm}/...`), onde o realm ja vem explicito na URL.
+
 ## 0.17.1
 ### Corrigido
 - **`jsonSchema` solto em `responses[]` do StopV2Step e aceito mas ignorado pelo gerador de OAS.** Confirmado construindo os fluxos master da integracao LH<>CELK (conta TOPMED): um `jsonSchema` colocado como irmao de `responseData`/`groups`/`description` (fora do objeto `oas`) passa por `save_flow_development`/`create_version`/`publish_flow` sem nenhum erro, mas `generate_oas_documentation` ignora o campo -- o response gerado fica sem `content`/`schema`. O shape correto, confirmado lendo um fluxo real de outra conta com OAS de response funcionando, e aninhar dentro de `oas`: `{ "oas": { "mediaType": "application/json", "headers": [], "jsonSchema": "<string>" } }` -- ja documentado em `apipass-patterns`, mas sem o alerta sobre a variante incorreta. Nova linha na tabela de armadilhas de `apipass-gotchas` e aviso adicionado em `apipass-patterns`.
