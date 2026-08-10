@@ -1,12 +1,24 @@
 # Changelog — apipass-integrations
 
-## 0.18.0
+## 0.18.1
 ### Corrigido
 Quatro armadilhas de plataforma descobertas construindo o projeto "Dashboard de CS via Movidesk" (fluxos server-rendered com `RestTrigger` publico + `NodeJSUtility` + `.StopV2Step`), documentadas em `build-flow` e replicadas como linhas de busca rapida em `apipass-gotchas`:
 - **`.utility.nodejs.NodeJSUtility` usa o campo `code`, nunca `rawData`** (esse e o campo do body do `.service.http.HttpRequest`). Usar `rawData` por engano nao da erro no save — o step trava silenciosamente e expira em ~2min na execucao real. Bonus: `usedSteps` e derivado automaticamente pelo engine a partir do `code`, nao precisa (e nao da para) preencher manualmente.
 - **`.StopV2Step.responses[].responseData.contentType` e ignorado pela resposta HTTP real** — sempre volta `application/json` independente do valor configurado. Fix: setar `responseData.headers` com `{"label": "Content-Type", "value": "..."}`. Necessario sempre que o Stop precisa servir HTML/CSV/texto puro (dashboards "server-rendered" pela propria APIPASS).
 - **`{{$.trigger.queryParams.*}}` nao decodifica `+` como espaco.** Formularios `GET` (ex. filtro com `<select>`) codificam espaco como `+` na query string — convencao classica de `application/x-www-form-urlencoded` — mas o `RestTrigger` preserva o `+` literal. Um filtro de cliente/categoria com espaco no valor (`?cliente=Newe+Seguros`) nunca dava match e retornava "0 resultados" silenciosamente. Fix: decodificar manualmente com `.replace(/\+/g, ' ')` antes de comparar.
 - **`RestTrigger` com `authProvider: "ENDPOINT"` + `authIds[]` protege de verdade, mas quebra link clicavel no navegador** (browsers nao anexam `Authorization` numa navegacao simples). Documentado o trade-off: usar `authIds[]` so para consumidor programatico; para dashboard/relatorio que humanos abrem clicando, usar protecao por query param (`?key=...`) checada no proprio `.StopV2Step`.
+
+## 0.18.0
+### Adicionado
+- **Regra para resolver `account_name` a partir de um link de dashboard, na skill `set-account`.** Documentado que em qualquer link `https://{account_name}.app.apipass.com.br/...` (dashboard, executions, flow/setup, etc.) o `account_name` e o subdominio antes de `.app.apipass.com.br` -- deve ser extraido direto e usado no `apipass_login`, sem perguntar ao usuario. Distinto do link de SSO/Keycloak (`https://sso.apipass.com.br/keycloak/realms/{realm}/...`), onde o realm ja vem explicito na URL.
+
+## 0.17.1
+### Corrigido
+- **`jsonSchema` solto em `responses[]` do StopV2Step e aceito mas ignorado pelo gerador de OAS.** Confirmado construindo os fluxos master da integracao LH<>CELK (conta TOPMED): um `jsonSchema` colocado como irmao de `responseData`/`groups`/`description` (fora do objeto `oas`) passa por `save_flow_development`/`create_version`/`publish_flow` sem nenhum erro, mas `generate_oas_documentation` ignora o campo -- o response gerado fica sem `content`/`schema`. O shape correto, confirmado lendo um fluxo real de outra conta com OAS de response funcionando, e aninhar dentro de `oas`: `{ "oas": { "mediaType": "application/json", "headers": [], "jsonSchema": "<string>" } }` -- ja documentado em `apipass-patterns`, mas sem o alerta sobre a variante incorreta. Nova linha na tabela de armadilhas de `apipass-gotchas` e aviso adicionado em `apipass-patterns`.
+
+## 0.17.0
+### Adicionado
+- **Login/auth: agente faz poll de `apipass_auth_status` automaticamente em vez de esperar o usuario confirmar.** Antes, apos `apipass_login` retornar a `authorizeUrl`, o agente ficava bloqueado esperando o usuario avisar ("go", "tenta de novo") apos autorizar no navegador — nao havia sinal automatico de conclusao. Documentado nas skills `apipass-gotchas` (linha `login_necessario` na tabela de armadilhas) e `set-account` (passo 3 do fluxo de login): o agente deve consultar `apipass_auth_status` sozinho, a cada poucos segundos, ate `authenticated: true` (ou timeout de alguns minutos), e so entao prosseguir com a acao original — sem exigir confirmacao manual do usuario. Validado empiricamente: `expiresInSeconds` sobe para o valor cheio apos a autorizacao no navegador, confirmando a emissao de um token novo.
 
 ## 0.16.5
 ### Corrigido
