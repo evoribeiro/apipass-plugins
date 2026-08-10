@@ -355,3 +355,52 @@ Quando um `nextSteps` aponta para um step cujo `type` e `.service.actions.Action
 ```
 
 > `save_flow_development` e `publish_flow` aceitam o specflow sem esse campo sem reclamar — o erro so aparece em execucao. Para confirmar o shape correto, leia um fluxo funcional existente com `get_flow_development`.
+
+> **Cuidado com o VALOR do `coreRouteType`, nao so a presenca.** Um valor errado-mas-plausivel (ex. acrescentar `_UTILITY` porque o `label` i18n da acao e `ACTIONS.DATA_STORE.PROJECT_STORE_GET_UTILITY`) NAO gera erro nenhum no save/publish/execucao — o engine simplesmente **trava a execucao indefinidamente** (fica `RUNNING` para sempre, sem erro, sem timeout). Isso e muito mais dificil de diagnosticar que a falta do campo (que falha rapido com "Method and URL are required"). O `coreRouteType` correto e o **actionId puro, sem sufixo** — confirme com `get_action(groupId, id)` (campo `coreRouteType` da resposta) antes de assumir um valor. Reproduzido de forma consistente: `PROJECT_STORE_GET_UTILITY`/`ACCOUNT_STORE_SET_UTILITY` (errado, trava) vs `PROJECT_STORE_GET`/`ACCOUNT_STORE_SET` (correto — vira `.store.ProjectStoreGetRouteConfig`/`SetRouteConfig` nativo no log, resposta em milissegundos). Ver tambem `/apipass-integrations:apipass-gotchas`.
+
+### Escopo de persistencia do Data Store (MEMORY vs FLOW vs PROJECT vs ACCOUNT)
+
+O grupo `DATA-STORE` do catalogo tem niveis de escopo com durabilidade muito diferente entre si — escolha errado e o dado "desaparece" sem nenhum erro:
+
+| Acao | Escopo | Persiste entre execucoes? |
+|---|---|---|
+| `MEMORY_STORE_GET`/`SET` | Efemero | **NAO** — confirmado empiricamente: SET numa execucao, GET numa execucao diferente minutos depois volta `null` mesmo com a mesma chave exata. Use so para estado dentro de UMA execucao (ex. cursor de paginacao num loop, chave prefixada com `{{$.flowExecution.id}}` para nao colidir entre execucoes concorrentes) |
+| `FLOW_STORE_GET`/`SET` | Por fluxo | Nao validado neste projeto — confirme antes de depender |
+| `PROJECT_STORE_GET`/`SET` | Por projeto (a chave e prefixada internamente com o `projectId`) | **SIM** — confirmado empiricamente incrementando um contador em 3 execucoes seguidas (`2000` → `2001` → `2002`) |
+| `ACCOUNT_STORE_GET`/`SET` | Por conta | Presumido persistente (mesma familia de `PROJECT_STORE`); atencao ao mesmo bug de `coreRouteType` com sufixo `_UTILITY` acima |
+
+Para contadores, "ultimo valor processado" ou qualquer estado que precise sobreviver entre execucoes/disparos diferentes, use `PROJECT_STORE` ou `ACCOUNT_STORE` — nunca `MEMORY_STORE`.
+
+## Consolidar validacao de multiplas chamadas HTTP sequenciais
+
+Quando um fluxo faz varias chamadas HTTP em sequencia (ex. 4 consultas a um catalogo) e cada uma precisa ser validada (status 200 + array nao vazio), evite um Switch por chamada — isso infla o fluxo rapidamente (4 chamadas = 4 switches so de validacao). Prefira encadear as chamadas direto (`a1`→`a2`→`a3`→`a4`, sem switch entre elas) e adicionar **um unico Switch consolidado** depois da ultima, com todas as condicoes ANDadas no case de sucesso:
+
+```json
+{
+  "id": "a10",
+  "label": "Chamadas OK?",
+  "type": ".utility.switchutility.SwitchUtility",
+  "default": "Erro",
+  "cases": [
+    {
+      "label": "Sucesso",
+      "targetStepId": "a5",
+      "targetStepType": "...",
+      "groups": [
+        {
+          "rules": [
+            { "input": "{{$.a1.headers.responseStatusCode}}", "condition": "TEXT_MATCHES", "expected": "200" },
+            { "input": "{{$.a1.body.data}}", "condition": "ARRAY_IS_NOT_EMPTY" },
+            { "input": "{{$.a2.headers.responseStatusCode}}", "condition": "TEXT_MATCHES", "expected": "200" },
+            { "input": "{{$.a2.body.data}}", "condition": "ARRAY_IS_NOT_EMPTY" }
+          ]
+        }
+      ]
+    }
+  ],
+  "defaultStepId": "a6",
+  "defaultStepType": "..."
+}
+```
+
+Mantenha o step de erro (ex. `a6`, um NodeJS que monta a mensagem) lendo cada chamada diretamente (`$.a1`, `$.a2`, ...) para o diagnostico detalhado — ele nao depende de qual switch roteou para ele, entao continua funcionando igual mesmo depois de remover os switches individuais.

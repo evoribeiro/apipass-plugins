@@ -1,5 +1,12 @@
 # Changelog — apipass-integrations
 
+## 0.18.2
+### Corrigido
+- **`coreRouteType` com valor errado-mas-plausivel (sufixo `_UTILITY`) trava a execucao indefinidamente sem erro, em steps `.service.actions.Action` de Data Store.** Diferente do campo ausente (falha rapido com "Method and URL are required"), um valor plausivel como `PROJECT_STORE_GET_UTILITY` (copiado do label i18n `ACTIONS.DATA_STORE.PROJECT_STORE_GET_UTILITY`) faz o engine tentar resolver uma rota inexistente e ficar `RUNNING` para sempre. O `coreRouteType` correto e o actionId puro, sem sufixo (`PROJECT_STORE_GET`) — confirme sempre com `get_action(groupId, id)`. Reproduzido de forma consistente em PROJECT_STORE_GET/SET e ACCOUNT_STORE_GET/SET. Documentado em `apipass-patterns` e `apipass-gotchas`.
+- **Escopo de persistencia dos 4 niveis de Data Store documentado em `apipass-patterns`.** `MEMORY_STORE` e efemero e NAO sobrevive entre execucoes (confirmado empiricamente); `PROJECT_STORE` persiste por projeto (confirmado incrementando um contador em 3 execucoes seguidas); `ACCOUNT_STORE` presumido persistente por conta; `FLOW_STORE` nao validado neste projeto.
+### Adicionado
+- **Padrao de consolidar validacao de multiplas chamadas HTTP sequenciais num unico Switch**, em `apipass-patterns` — AND de todas as condicoes no case de sucesso, em vez de um Switch por chamada.
+
 ## 0.18.1
 ### Corrigido
 Quatro armadilhas de plataforma descobertas construindo o projeto "Dashboard de CS via Movidesk" (fluxos server-rendered com `RestTrigger` publico + `NodeJSUtility` + `.StopV2Step`), documentadas em `build-flow` e replicadas como linhas de busca rapida em `apipass-gotchas`:
