@@ -84,6 +84,10 @@ A imagem do trigger REST é **`"api"`** (NÃO `"rest"` — `"rest"` renderiza im
 }
 ```
 
+**`{{$.trigger.queryParams.*}}` NAO decodifica `+` como espaco.** Um `<form method="GET">` (ex. filtro de dashboard com `<select>`) codifica espacos em valores como `+` na query string — convencao classica de `application/x-www-form-urlencoded`. O `RestTrigger` da APIPASS decodifica `%XX` normalmente, mas **preserva o `+` literal** em vez de converte-lo para espaco. Um valor como `?cliente=Contoso+Seguros` chega em `queryParams.cliente` como a string `"Contoso+Seguros"`, nao `"Contoso Seguros"` — qualquer comparacao/filtro subsequente (`===`, `.indexOf(...)`) contra um valor com espaco real nunca da match, silenciosamente (sem erro, sem log). **Fix:** decodifique manualmente todo `queryParam` que possa conter espaco, ANTES de usar em filtro ou echo: `function decodePlus(v) { return (v || '').replace(/\+/g, ' '); }`. Vale para qualquer valor vindo de um `<select>`/`<input>` de formulario GET — nao so nomes de cliente, mas categorias/status com espaco no proprio nome (ex. `"Dúvida / Solicitação"`).
+
+**`RestTrigger` pode exigir Authorization via `authIds[]` — mas isso quebra link clicavel.** E possivel setar `authProvider: "ENDPOINT"` + `authIds: ["<authId>"]` (array, nao o `authId` singular) apontando pra uma credencial `ENDPOINT`. Isso faz a plataforma validar o header `Authorization` da requisicao real contra o `token` guardado na credencial **antes mesmo do fluxo executar** — e uma protecao de verdade a nivel de plataforma (sem header → 401 automatico; com o token, cru ou `Bearer <token>` → 200), nao uma checagem manual dentro do fluxo. **Trade-off:** como exige um header HTTP customizado, **nao funciona com um link clicado direto no navegador** (browsers nao anexam `Authorization` numa navegacao simples) — serve so para chamada programatica (outro sistema/script). Se o caso de uso e um dashboard/relatorio que humanos abrem clicando num link, use protecao via query param (`?key=...`, checada dentro do proprio fluxo no `.StopV2Step` com `groups`/`TEXT_DOES_NOT_MATCH`) — mais fraca (chave na URL, sem log de acesso), mas e a que funciona pra esse caso. **Pergunte ao usuario antes de sugerir/implementar auth por header num RestTrigger** — so faz sentido se o consumidor for outro sistema, nao um humano clicando num link.
+
 ### Loop — use SEMPRE o v3 (`LoopCanvas`)
 O único tipo de loop válido é **`.utility.loop.LoopCanvas`** (image `"loop"`). Os tipos
 `.utility.loop.LoopUtility` e `.utility.loop.LoopUtilityV2` foram **descontinuados** — nunca os use.
@@ -188,6 +192,8 @@ No stop, referencie o erro via `{{$.a3.message}}` (não `.body`).
 }
 ```
 
+**Content-Type real da resposta ignora o campo `responseData.contentType`.** Mesmo padrao do `bearerToken`/`contentType` de nivel raiz do `.service.http.HttpRequest` (ver secao "Step HTTP" abaixo): setar `responseData.contentType: "text/html"` (ou qualquer valor diferente de `application/json`) e aceito no `save_flow_development`, mas a resposta HTTP real sempre volta com `Content-Type: application/json`, independente do valor configurado. **Fix confirmado:** adicione em `responseData.headers` um item `{"label": "Content-Type", "value": "text/html; charset=utf-8"}` — isso sim reflete no header real (confirmado via `fetch(...).headers.get('content-type')` num navegador real contra o endpoint publicado). Mantenha `contentType` preenchido tambem por compatibilidade de schema, mas nunca confie nele isoladamente. Necessario sempre que o Stop precisar servir HTML/CSV/texto puro (ex. um dashboard "server-rendered" pela propria APIPASS) em vez do JSON padrao.
+
 **Fluxos com RestTrigger: sempre preencha `responses[]` com o campo `oas`.**
 O campo `responses` e obrigatorio para publicar (sem ele, `publish_flow` retorna HTTP 400). Alem disso, o sub-objeto `oas` em cada resposta alimenta o Swagger publico da APIPASS.
 - Uma entrada com `"default": true` e `"groups": []` (caminho feliz, fallback).
@@ -232,8 +238,9 @@ Para consumir/publicar mensagens via fila (AMS) ou persistir dados no MongoDB na
 
 ### Step NodeJS
 - `type: ".utility.nodejs.NodeJSUtility"`, `image: "nodejs"`
+- **O codigo-fonte vai no campo `code`, NUNCA em `rawData`** (esse e o campo do body do `.service.http.HttpRequest`, secao abaixo). Usar `rawData` por engano NAO da erro no `save_flow_development` — o step e aceito normalmente — mas a execucao real trava e expira em ~2 minutos (`"Execution timeout"`), como se `$export` nunca tivesse sido chamado. Sintoma silencioso e caro de debugar; se um NodeJS trava sem log de erro, confira esse campo primeiro.
 - Exportar resultado: `$export(null, { campo: valor })`
-- Declare `usedSteps: ["a0", "a1"]` com os IDs dos steps referenciados no codigo
+- `usedSteps` e **derivado automaticamente pelo engine** a partir das referencias (`$.a0`, `$.trigger`, etc.) encontradas dentro do `code`, no momento do `save_flow_development`/`create_version` — nao precisa (e nao da para) preencher manualmente; qualquer valor enviado e substituido pelo que o engine detectar no proprio codigo.
 
 ### Step HTTP
 - `type: ".service.http.HttpRequest"`, `image: "http"`
