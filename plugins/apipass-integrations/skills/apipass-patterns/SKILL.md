@@ -78,6 +78,8 @@ Sempre preencha o campo `oas` ao criar ou editar fluxos com RestTrigger.
 - **`groups`** — regras de condicao que ativam aquela resposta. Vazio apenas na `default`.
 - **`oas.jsonSchema`** — **string** JSON (serializada, igual ao `jsonSchema` da RestTrigger). Nunca objeto.
 
+> **Cuidado:** um `jsonSchema` colocado direto no item de `responses[]` (fora do `oas`, como irmao de `responseData`/`groups`) e aceito silenciosamente pelo `save_flow_development`/`publish_flow`, mas o gerador de OAS o ignora — o response fica sem `content`/`schema` no Swagger. Sempre aninhe dentro de `oas`.
+
 ### Exemplo com 3 respostas (201, 400, 422)
 
 ```json
